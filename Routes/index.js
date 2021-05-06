@@ -9,6 +9,18 @@ routes.get('/', (req, res) => {
   res.send('<h1>is ready</h1>');
 });
 
+const verifyToken = (req, res, next) => {
+  const token = req.headers['authorization'];
+  if (typeof token !== 'undefined') {
+    // const bearer = header.split(' ');
+    // const token = bearer[1];
+    req.token = token;
+    next();
+  } else {
+    //If header is undefined return Forbidden (403)
+    res.sendStatus(403)
+  }
+}
 
 routes.post('/api/signup', function (req, res) {
   let { username, password } = req.body;
@@ -57,5 +69,23 @@ routes.post('/api/signup', function (req, res) {
     // dbconnection.close();
   });
 })
+
+routes.post('/api/addstore', verifyToken, function (req, res) {
+  const { storename, description, coordinates } = req.body;
+
+  const token = req.token;
+  jwt.verify(token, config.secret, function (err, decoded) {
+    dbconnection.connect(err => {
+      const collection = dbconnection.db("grocerypickup").collection("stores");
+      let storeObj = { storename, description, coordinates: coordinates.split(", "), userid: decoded.id };
+      collection.insertOne(storeObj, function (err, result) {
+        if (err) console.log(err);
+        res.status(200).send({ payload: result.ops[0] });
+      })
+    });
+
+  });
+
+});
 
 module.exports = routes;
